@@ -21,6 +21,38 @@ let animatingCell = null;
 let blackWin = 0;
 let whiteWin = 0;
 
+// Responsive coordinate calculation
+function getBoardCoordinates(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+
+    if (clientX === undefined || clientY === undefined) return null;
+
+    const canvasX = (clientX - rect.left) * scaleX;
+    const canvasY = (clientY - rect.top) * scaleY;
+
+    const x = Math.floor(canvasX / cell);
+    const y = Math.floor(canvasY / cell);
+
+    if (x < 0 || x >= size || y < 0 || y >= size) return null;
+    return { x, y };
+}
+
 // Sound playback with safe fallback
 function playSound(file, volume = 0.5) {
     const audio = new Audio("sounds/" + file);
@@ -38,14 +70,14 @@ function playSound(file, volume = 0.5) {
 drawGrid();
 
 // Human Move Event
-canvas.addEventListener("click", function (e) {
+function handleHumanMove(e) {
     if (gameOver || !started || isComputerThinking || currentPlayer !== HUMAN) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / cell);
-    const y = Math.floor((e.clientY - rect.top) / cell);
+    const coords = getBoardCoordinates(e);
+    if (!coords) return;
 
-    if (x < 0 || x >= size || y < 0 || y >= size || board[x][y]) return;
+    const { x, y } = coords;
+    if (board[x][y]) return;
 
     // Place Human Piece
     board[x][y] = HUMAN;
@@ -85,7 +117,9 @@ canvas.addEventListener("click", function (e) {
         }
         makeComputerMove();
     }, 450);
-});
+}
+
+canvas.addEventListener("click", handleHumanMove);
 
 // Computer Move Logic
 function makeComputerMove() {
@@ -123,9 +157,10 @@ function makeComputerMove() {
     redraw();
 }
 
-// Hover effects
+// Hover effects (active only on devices with pointer hover support)
 canvas.addEventListener("mousemove", function (e) {
-    if (gameOver || !started || isComputerThinking || currentPlayer !== HUMAN) {
+    if (gameOver || !started || isComputerThinking || currentPlayer !== HUMAN ||
+        (window.matchMedia && !window.matchMedia("(hover: hover)").matches)) {
         if (hoverX !== null || hoverY !== null) {
             hoverX = null;
             hoverY = null;
@@ -134,24 +169,29 @@ canvas.addEventListener("mousemove", function (e) {
         return;
     }
 
-    const rect = canvas.getBoundingClientRect();
-    const nx = Math.floor((e.clientX - rect.left) / cell);
-    const ny = Math.floor((e.clientY - rect.top) / cell);
-
-    if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
-        if (hoverX !== nx || hoverY !== ny) {
-            hoverX = nx;
-            hoverY = ny;
+    const coords = getBoardCoordinates(e);
+    if (coords) {
+        if (hoverX !== coords.x || hoverY !== coords.y) {
+            hoverX = coords.x;
+            hoverY = coords.y;
             redraw();
         }
     } else {
-        hoverX = null;
-        hoverY = null;
-        redraw();
+        if (hoverX !== null || hoverY !== null) {
+            hoverX = null;
+            hoverY = null;
+            redraw();
+        }
     }
 });
 
 canvas.addEventListener("mouseleave", () => {
+    hoverX = null;
+    hoverY = null;
+    redraw();
+});
+
+canvas.addEventListener("touchend", () => {
     hoverX = null;
     hoverY = null;
     redraw();
