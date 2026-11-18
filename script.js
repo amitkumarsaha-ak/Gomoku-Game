@@ -221,10 +221,10 @@ document.getElementById("restartBtn").addEventListener("click", () => {
 
     board = Array.from({ length: size }, () => Array(size).fill(null));
     gameOver = false;
-    started = false;
+    started = true;
     currentPlayer = HUMAN;
 
-    document.getElementById("resultText").innerText = "Game Restarted. Press Start Game";
+    document.getElementById("resultText").innerText = "Game Restarted! Your Turn (BLUE)";
     redraw();
 });
 
