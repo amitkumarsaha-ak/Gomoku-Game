@@ -2,6 +2,7 @@ const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
 
 const size = 8;
+const WIN_COUNT = 4;
 const cell = canvas.width / size;
 
 const HUMAN = "black";      // Blue
@@ -325,24 +326,24 @@ function drawGhost(x, y, color) {
     ctx.restore();
 }
 
-// Game Rules
+// Game Rules (Connect 4)
 function checkWin(x, y, player) {
     const dir = [[1, 0], [0, 1], [1, 1], [1, -1]];
 
     for (let [dx, dy] of dir) {
         let count = 1;
 
-        for (let i = 1; i < 5; i++) {
+        for (let i = 1; i < WIN_COUNT; i++) {
             if (board[x + i * dx]?.[y + i * dy] === player) count++;
             else break;
         }
 
-        for (let i = 1; i < 5; i++) {
+        for (let i = 1; i < WIN_COUNT; i++) {
             if (board[x - i * dx]?.[y - i * dy] === player) count++;
             else break;
         }
 
-        if (count >= 5) return true;
+        if (count >= WIN_COUNT) return true;
     }
     return false;
 }
@@ -351,11 +352,11 @@ function isBoardFull() {
     return board.every(row => row.every(c => c !== null));
 }
 
-// AI Evaluation
+// AI Evaluation calibrated for 4 in a row
 function getMoveScoreForPlayer(x, y, player) {
     const dir = [[1, 0], [0, 1], [1, 1], [1, -1]];
     let totalScore = 0;
-    let counts = { win: 0, open4: 0, blocked4: 0, open3: 0, blocked3: 0, open2: 0 };
+    let counts = { win: 0, open3: 0, blocked3: 0, open2: 0, blocked2: 0 };
 
     for (let [dx, dy] of dir) {
         let cPos = 0;
@@ -381,7 +382,7 @@ function getMoveScoreForPlayer(x, y, player) {
         let count = 1 + cPos + cNeg;
         let openEnds = (posOpen ? 1 : 0) + (negOpen ? 1 : 0);
 
-        // Check if forming 5 in this direction is possible
+        // Check if forming 4 in this direction is possible
         let spacePos = cPos;
         step = cPos + 1;
         while (board[x + step * dx]?.[y + step * dy] === null) {
@@ -396,39 +397,32 @@ function getMoveScoreForPlayer(x, y, player) {
         }
         let totalPossible = 1 + spacePos + spaceNeg;
 
-        if (totalPossible < 5 && count < 5) {
+        if (totalPossible < WIN_COUNT && count < WIN_COUNT) {
             continue;
         }
 
-        if (count >= 5) {
+        if (count >= WIN_COUNT) {
             counts.win++;
             totalScore += 100000;
-        } else if (count === 4) {
-            if (openEnds === 2) {
-                counts.open4++;
-                totalScore += 10000;
-            } else if (openEnds === 1) {
-                counts.blocked4++;
-                totalScore += 2500;
-            }
         } else if (count === 3) {
             if (openEnds === 2) {
                 counts.open3++;
-                totalScore += 3000;
+                totalScore += 10000;
             } else if (openEnds === 1) {
                 counts.blocked3++;
-                totalScore += 300;
+                totalScore += 2500;
             }
         } else if (count === 2) {
             if (openEnds === 2) {
                 counts.open2++;
-                totalScore += 150;
+                totalScore += 2000;
             } else if (openEnds === 1) {
-                totalScore += 20;
+                counts.blocked2++;
+                totalScore += 200;
             }
         } else if (count === 1) {
             if (openEnds === 2) {
-                totalScore += 5;
+                totalScore += 20;
             }
         }
     }
@@ -440,27 +434,27 @@ function evaluateCandidate(x, y) {
     const ai = getMoveScoreForPlayer(x, y, COMPUTER);
     const human = getMoveScoreForPlayer(x, y, HUMAN);
 
-    // 1. Computer can win immediately
+    // 1. Computer can win immediately (4 in a row)
     if (ai.counts.win > 0) return 1000000;
 
-    // 2. Human can win on next turn -> MUST block immediately
+    // 2. Human can win on next turn (has 3 in a row) -> MUST block immediately
     if (human.counts.win > 0) return 800000;
 
-    // 3. Computer can create Open 4 or multi-four threat
-    if (ai.counts.open4 > 0 || ai.counts.blocked4 >= 2 || (ai.counts.blocked4 >= 1 && ai.counts.open3 >= 1)) {
+    // 3. Computer can create Open 3 (unstoppable win next turn)
+    if (ai.counts.open3 > 0 || ai.counts.blocked3 >= 2 || (ai.counts.blocked3 >= 1 && ai.counts.open2 >= 1)) {
         return 500000;
     }
 
-    // 4. Human can create Open 4 or lethal multi-threat -> MUST block
-    if (human.counts.open4 > 0 || human.counts.blocked4 >= 2 || (human.counts.blocked4 >= 1 && human.counts.open3 >= 1)) {
+    // 4. Human can create Open 3 or lethal multi-threat -> MUST block
+    if (human.counts.open3 > 0 || human.counts.blocked3 >= 2 || (human.counts.blocked3 >= 1 && human.counts.open2 >= 1)) {
         return 400000;
     }
 
-    // 5. Computer can create double Open 3
-    if (ai.counts.open3 >= 2) return 200000;
+    // 5. Computer can create double Open 2
+    if (ai.counts.open2 >= 2) return 200000;
 
-    // 6. Human can create double Open 3 -> Block
-    if (human.counts.open3 >= 2) return 150000;
+    // 6. Human can create double Open 2 -> Block
+    if (human.counts.open2 >= 2) return 150000;
 
     // Positional evaluation combining attack and defense
     let score = ai.totalScore * 1.2 + human.totalScore * 1.0;
