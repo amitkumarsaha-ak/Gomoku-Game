@@ -87,7 +87,7 @@ function handleHumanMove(e) {
     // Check Human Win
     if (checkWin(x, y, HUMAN)) {
         gameOver = true;
-        playSound("win.mp3", 0.6);
+        playSound("fahhh.mp3", 0.8);
         blackWin++;
         document.getElementById("blackScore").innerText = blackWin;
         document.getElementById("resultText").innerText = "🎉 Congratulations! You (BLUE) Won!";
@@ -135,7 +135,7 @@ function makeComputerMove() {
     if (checkWin(x, y, COMPUTER)) {
         gameOver = true;
         isComputerThinking = false;
-        playSound("win.mp3", 0.6);
+        playSound("fahhh.mp3", 0.8);
         whiteWin++;
         document.getElementById("whiteScore").innerText = whiteWin;
         document.getElementById("resultText").innerText = "💻 Computer (PINK) Won!";
